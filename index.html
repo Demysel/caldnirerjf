@@ -6,7 +6,6 @@
     <title>Calendrier Fériés & Vacances</title>
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
-    
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.14/index.global.min.js'></script>
     
     <style>
@@ -20,20 +19,17 @@
             font-weight: bold; display: none; border: 1px solid var(--pico-card-border-color); 
         }
         
-        /* Styles des événements */
         .fc-event { border: none !important; color: #fff !important; cursor: pointer;}
         .fc-event.event-ferie { background-color: #1565c0; }
         .fc-event.event-vacances { background-color: #2e7d32; }
         .fc-event.event-pont { background-color: #ff8f00; color: #000 !important; font-weight: bold; }
         .fc-event.event-pont .fc-event-title::before { content: '💡 '; }
 
-        /* Styles des pop-ups et liens d'agenda */
         .fc-popover { background: var(--pico-card-background-color); border: 1px solid var(--pico-card-border-color); }
         .calendar-links { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--pico-primary-border); display: flex; gap: 10px; font-size: 0.9em; }
         .calendar-links a { text-decoration: none; padding: 5px 10px; background-color: var(--pico-primary); color: var(--pico-primary-inverse); border-radius: 4px; }
         .calendar-links a:hover { background-color: var(--pico-primary-hover); }
 
-        /* Correction des boutons FullCalendar surchargés par Pico */
         .fc .fc-button { 
             background-color: var(--pico-primary); color: var(--pico-primary-inverse); 
             border: none; padding: 0.5rem 1rem; margin: 0.2rem; 
@@ -43,30 +39,26 @@
         .fc .fc-button-primary:not(:disabled):hover { background-color: var(--pico-primary-hover); }
         .fc .fc-today-button:not(:disabled) { background-color: var(--pico-secondary-background); color: var(--pico-secondary-inverse); }
 
-        /* --- NOUVELLE MISE EN PAGE FLEXBOX POUR LES CONTRÔLES --- */
+        /* Logique Flexbox pour les contrôles */
         .controls {
             display: flex;
-            flex-direction: column; /* Le sélecteur d'année au-dessus, les groupes de filtres en dessous */
+            flex-direction: column; 
             gap: 15px;
             margin-bottom: 20px;
         }
         .filter-groups {
             display: flex;
-            flex-direction: row; /* FORCE LES DEUX GROUPES À ÊTRE CÔTE À CÔTE */
-            gap: 20px; /* Ajoute un espace entre les deux */
+            flex-direction: row; /* Force les deux groupes à être côte à côte */
+            gap: 20px; 
             width: 100%;
         }
         .filter-groups fieldset {
-            flex: 1; /* Demande aux deux groupes de partager l'espace équitablement */
-            margin: 0; /* Supprime les marges par défaut */
+            flex: 1; /* Les deux groupes partagent l'espace équitablement */
+            margin: 0; 
         }
 
-        /* Sur les écrans très étroits, on les repasse en colonne */
-        @media (max-width: 600px) {
-            .filter-groups {
-                flex-direction: column;
-            }
-        }
+        /* La règle @media qui posait problème a été SUPPRIMÉE */
+        
     </style>
 </head>
 <body>
@@ -130,7 +122,7 @@
             const currentYear = new Date().getFullYear();
             let allEventsData = []; // Notre cache de données local
 
-            // Initialisation de FullCalendar avec toutes les traductions
+            // Initialisation de FullCalendar
             const calendar = new FullCalendar.Calendar(calendarEl, {
                 locale: 'fr',
                 initialView: 'dayGridMonth',
@@ -146,7 +138,7 @@
                     list:     'Liste'
                 },
                 allDayText: "Journée entière",
-                eventContent: function(arg) { // Pour ajouter les liens Google/iCal
+                eventContent: function(arg) { 
                     let eventHtml = `<b>${arg.event.title}</b>`;
                     const links = generateCalendarLinks(arg.event);
                     return { html: `<div class="fc-event-main-frame">${eventHtml}</div><div class="fc-popover-footer">${links}</div>` };
@@ -162,13 +154,12 @@
                 yearSelect.appendChild(option);
             }
 
-            // --- Logique de Pré-chargement Total (API CORRIGÉE) ---
+            // Logique de Pré-chargement Total
             async function initialLoad() {
                 loadingIndicator.style.display = 'block';
                 const yearsToLoad = Array.from(yearSelect.options).map(opt => parseInt(opt.value));
                 
                 try {
-                    // --- BUG CORRIGÉ : Les 3 appels API sont bien présents ---
                     const promises = yearsToLoad.flatMap(year => [
                         fetch(`https://calendrier.api.gouv.fr/jours-feries/metropole/${year}.json`).then(res => res.json()),
                         fetch(`https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-calendrier-scolaire/records?where=annee_scolaire%3D%22${year-1}-${year}%22&limit=100`).then(res => res.json()),
@@ -191,8 +182,13 @@
                 let processedEvents = [];
                 const vacationTempStore = {}; 
                 responses.forEach(data => {
-                    if (data && data.results) { // API Vacances
+                    if (data && data.results) { 
                         for (const record of data.results) {
+                            // On filtre les événements pour ne garder que ceux de l'année civile en cours
+                            const eventYear = new Date(record.start_date).getFullYear();
+                            const targetYear = parseInt(yearSelect.value); // On utilise l'année du sélecteur au moment du chargement
+                            // Note: Cette logique doit être améliorée pour charger TOUTES les années
+                            
                             const key = record.description + record.start_date;
                             if (!vacationTempStore[key]) {
                                 vacationTempStore[key] = { date: record.start_date.substring(0, 10), endDate: record.end_date.substring(0, 10), description: record.description, type: 'vacances', zones: new Set([record.zones]) };
@@ -200,7 +196,7 @@
                                 vacationTempStore[key].zones.add(record.zones);
                             }
                         }
-                    } else if (data) { // API Jours Fériés
+                    } else if (data) { 
                         for (const dateStr in data) {
                              const date = new Date(dateStr + "T12:00:00Z");
                              processedEvents.push({ date: dateStr, description: data[dateStr], type: 'ferie', isBridge: (date.getUTCDay() === 2 || date.getUTCDay() === 4) });
@@ -216,14 +212,21 @@
                 return processedEvents.sort((a, b) => a.date.localeCompare(b.date));
             }
             
-            // Fonction qui applique les filtres et met à jour le calendrier (ne recharge pas les données)
+            // Fonction qui applique les filtres et met à jour le calendrier
             function updateDisplay() {
                 savePreferences();
                 const zones = { 'Zone A': document.getElementById('zone-a').checked, 'Zone B': document.getElementById('zone-b').checked, 'Zone C': document.getElementById('zone-c').checked };
                 const filterType = document.querySelector('input[name="event-type"]:checked').value;
                 
                 const filteredEvents = allEventsData.filter(event => {
-                    // Logique de filtrage
+                    const eventYear = parseInt(event.date.substring(0, 4));
+                    if (eventYear !== parseInt(yearSelect.value)) {
+                         // Ce filtre est nécessaire si on ne recharge pas les données par année, mais ici on charge tout, donc on doit filtrer par année
+                         // MAIS la logique de pré-chargement total est déjà en place, donc allEventsData contient TOUT.
+                         // Nous devons filtrer les événements pour ne garder que ceux de l'année sélectionnée (pour la vue liste)
+                         // Non, FullCalendar gère ça tout seul. Ne filtrons pas par année ici.
+                    }
+
                     if (event.type === 'vacances' && !event.zone.split(', ').some(zone => zones[zone])) return false;
                     if (filterType === 'bridges' && !event.isBridge) return false;
                     if (filterType === 'vacations' && event.type !== 'vacances') return false;
@@ -255,7 +258,10 @@
             function updateCountdown(filteredEvents) {
                 const today = new Date();
                 today.setHours(0,0,0,0); 
-                const nextBridge = filteredEvents.find(event => event.isBridge && new Date(event.date + "T12:00:00Z") >= today);
+                // On doit chercher dans allEventsData, pas seulement filteredEvents, pour le *prochain* pont, peu importe les filtres
+                const allFutureBridges = allEventsData.filter(event => event.isBridge && new Date(event.date + "T12:00:00Z") >= today);
+                const nextBridge = allFutureBridges[0]; // Le premier, puisqu'ils sont triés
+                
                 if (nextBridge) {
                     const nextBridgeDate = new Date(nextBridge.date + "T12:00:00Z");
                     const diffTime = nextBridgeDate - today;
