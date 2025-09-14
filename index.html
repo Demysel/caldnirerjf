@@ -4,32 +4,41 @@
     <meta charset='UTF-8' />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calendrier Fériés & Vacances</title>
-    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
-    
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.14/index.global.min.js'></script>
-    
     <style>
-        /* On adapte légèrement pour Pico */
         body { padding: 0; }
         main { margin-top: 20px; }
-        
-        /* Styles pour le loading et les événements (inchangés) */
         #calendar-wrapper { position: relative; }
         #loading-indicator { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; background: var(--pico-card-background-color); padding: 20px; border-radius: var(--pico-border-radius); font-weight: bold; display: none; border: 1px solid var(--pico-card-border-color); }
-        
-        /* Styles des événements améliorés pour s'adapter à Pico */
         .fc-event { border: none !important; color: #fff !important; }
         .fc-event.event-ferie { background-color: #1565c0; }
         .fc-event.event-vacances { background-color: #2e7d32; }
         .fc-event.event-pont { background-color: #ff8f00; color: #000 !important; font-weight: bold; }
         .fc-event.event-pont .fc-event-title::before { content: '💡 '; }
-
-        /* Style pour les popups d'événements */
         .fc-popover { background: var(--pico-card-background-color); border: 1px solid var(--pico-card-border-color); }
         .calendar-links { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--pico-primary-border); display: flex; gap: 10px; font-size: 0.9em; }
         .calendar-links a { text-decoration: none; padding: 5px 10px; background-color: var(--pico-primary); color: var(--pico-primary-inverse); border-radius: 4px; }
         .calendar-links a:hover { background-color: var(--pico-primary-hover); }
+        /* Pico surcharge les boutons, forçons le style de FullCalendar */
+        .fc .fc-button {
+            background-color: var(--pico-primary);
+            color: var(--pico-primary-inverse);
+            border: none;
+            padding: 0.5rem 1rem;
+            margin: 0.2rem;
+            border-radius: var(--pico-border-radius);
+        }
+        .fc .fc-button-primary:disabled {
+            background-color: var(--pico-muted-background);
+        }
+        .fc .fc-button-primary:not(:disabled):hover {
+            background-color: var(--pico-primary-hover);
+        }
+        .fc .fc-today-button:not(:disabled) {
+             background-color: var(--pico-secondary-background);
+             color: var(--pico-secondary-inverse);
+        }
     </style>
 </head>
 <body>
@@ -79,9 +88,7 @@
     </main>
 
     <script>
-        // Tout le script JavaScript est EXACTEMENT le même que la version précédente
-        // ... (collez ici tout le script JavaScript de notre réponse précédente) ...
-         document.addEventListener('DOMContentLoaded', async function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             const yearSelect = document.getElementById('year-select');
             const zoneFilters = document.querySelectorAll('.zone-filter');
             const eventTypeFilters = document.querySelectorAll('input[name="event-type"]');
@@ -94,8 +101,19 @@
             const calendar = new FullCalendar.Calendar(calendarEl, {
                 locale: 'fr',
                 initialView: 'dayGridMonth',
-                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,listYear' },
-                buttonText: { today: "Aujourd'hui", month: 'Mois', list: 'Liste' },
+                
+                // --- MODIFICATION : Barre d'outils simplifiée pour mobile ---
+                headerToolbar: { 
+                    left: 'prev,next today', 
+                    center: 'title', 
+                    right: 'dayGridMonth,listMonth' // Remplacement de listYear par listMonth
+                },
+                buttonText: {
+                    today:    "Aujourd'hui",
+                    month:    'Mois',
+                    week:     'Semaine',
+                    list:     'Liste' // S'appliquera à listMonth
+                },
                 allDayText: "Journée entière",
                 eventContent: function(arg) {
                     let eventHtml = `<b>${arg.event.title}</b>`;
@@ -112,34 +130,6 @@
                 yearSelect.appendChild(option);
             }
 
-            // --- Fonctions de sauvegarde/chargement des préférences ---
-            function savePreferences() {
-                const prefs = {
-                    year: yearSelect.value,
-                    zones: { a: document.getElementById('zone-a').checked, b: document.getElementById('zone-b').checked, c: document.getElementById('zone-c').checked },
-                    filter: document.querySelector('input[name="event-type"]:checked').value
-                };
-                localStorage.setItem('calendarPrefs', JSON.stringify(prefs));
-            }
-
-            function loadPreferences() {
-                const prefs = JSON.parse(localStorage.getItem('calendarPrefs'));
-                if (prefs) {
-                    yearSelect.value = prefs.year;
-                    document.getElementById('zone-a').checked = prefs.zones.a;
-                    document.getElementById('zone-b').checked = prefs.zones.b;
-                    document.getElementById('zone-c').checked = prefs.zones.c;
-                    document.querySelector(`input[name="event-type"][value="${prefs.filter}"]`).checked = true;
-                } else { 
-                    document.getElementById('zone-a').checked = true;
-                    document.getElementById('zone-b').checked = true;
-                    document.getElementById('zone-c').checked = true;
-                    document.getElementById('filter-all').checked = true;
-                    yearSelect.value = currentYear;
-                }
-            }
-
-            // --- Logique principale de chargement des données ---
             async function initialLoad() {
                 loadingIndicator.style.display = 'block';
                 const yearsToLoad = Array.from(yearSelect.options).map(opt => parseInt(opt.value));
@@ -190,7 +180,6 @@
                 return processedEvents.sort((a, b) => a.date.localeCompare(b.date));
             }
             
-            // --- Logique d'affichage et de filtrage ---
             function updateDisplay() {
                 savePreferences();
                 const zones = { 'Zone A': document.getElementById('zone-a').checked, 'Zone B': document.getElementById('zone-b').checked, 'Zone C': document.getElementById('zone-c').checked };
@@ -221,13 +210,12 @@
                 
                 calendar.removeAllEvents();
                 calendar.addEventSource(calendarEvents);
-                updateCountdown(filteredEvents); // On met à jour le compte à rebours avec les événements filtrés
+                updateCountdown(filteredEvents);
             }
             
             function updateCountdown(filteredEvents) {
                 const today = new Date();
                 today.setHours(0,0,0,0); 
-                
                 const nextBridge = filteredEvents.find(event => event.isBridge && new Date(event.date + "T12:00:00Z") >= today);
 
                 if (nextBridge) {
@@ -244,32 +232,21 @@
             function generateCalendarLinks(event) {
                 const title = encodeURIComponent(event.title);
                 const startDate = new Date(event.startStr);
-                
                 let endDate = event.end ? new Date(event.endStr) : new Date(startDate);
-                if (!event.end) {
-                    endDate.setDate(endDate.getDate() + 1);
-                }
-                
+                if (!event.end) endDate.setDate(endDate.getDate() + 1);
                 const formatDate = (date) => date.toISOString().replace(/-/g, '').split('T')[0];
                 const googleDates = `${formatDate(startDate)}/${formatDate(endDate)}`;
                 const googleLink = `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${googleDates}`;
-
-                const icsContent = [
-                    "BEGIN:VCALENDAR", "VERSION:2.0", "BEGIN:VEVENT",
-                    `URL:${document.location.href}`,
-                    `DTSTART;VALUE=DATE:${formatDate(startDate)}`,
-                    `DTEND;VALUE=DATE:${formatDate(endDate)}`,
-                    `SUMMARY:${event.title}`, "END:VEVENT", "END:VCALENDAR"
-                ].join("\n");
+                const icsContent = ["BEGIN:VCALENDAR", "VERSION:2.0", "BEGIN:VEVENT", `URL:${document.location.href}`, `DTSTART;VALUE=DATE:${formatDate(startDate)}`, `DTEND;VALUE=DATE:${formatDate(endDate)}`, `SUMMARY:${event.title}`, "END:VEVENT", "END:VCALENDAR"].join("\n");
                 const icsLink = `data:text/calendar;charset=utf8,${encodeURIComponent(icsContent)}`;
                 
                 return `<div class="calendar-links">
-                            <a href="${googleLink}" target="_blank" rel="noopener">Google</a>
-                            <a href="${icsLink}" download="${event.title}.ics">iCal/Outlook</a>
+                            <a href="${googleLink}" target="_blank" rel="noopener" role="button" class="pico-button-small">Google</a>
+                            <a href="${icsLink}" download="${event.title}.ics" role="button" class="pico-button-small">iCal/Outlook</a>
                         </div>`;
             }
 
-            // --- Démarrage ---
+            // --- Logique de Démarrage ---
             loadPreferences();
             calendar.gotoDate(`${yearSelect.value}-01-01`);
             initialLoad();
