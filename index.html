@@ -42,6 +42,31 @@
         .fc .fc-button-primary:disabled { background-color: var(--pico-muted-background); }
         .fc .fc-button-primary:not(:disabled):hover { background-color: var(--pico-primary-hover); }
         .fc .fc-today-button:not(:disabled) { background-color: var(--pico-secondary-background); color: var(--pico-secondary-inverse); }
+
+        /* --- NOUVELLE MISE EN PAGE FLEXBOX POUR LES CONTRÔLES --- */
+        .controls {
+            display: flex;
+            flex-direction: column; /* Le sélecteur d'année au-dessus, les groupes de filtres en dessous */
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .filter-groups {
+            display: flex;
+            flex-direction: row; /* FORCE LES DEUX GROUPES À ÊTRE CÔTE À CÔTE */
+            gap: 20px; /* Ajoute un espace entre les deux */
+            width: 100%;
+        }
+        .filter-groups fieldset {
+            flex: 1; /* Demande aux deux groupes de partager l'espace équitablement */
+            margin: 0; /* Supprime les marges par défaut */
+        }
+
+        /* Sur les écrans très étroits, on les repasse en colonne */
+        @media (max-width: 600px) {
+            .filter-groups {
+                flex-direction: column;
+            }
+        }
     </style>
 </head>
 <body>
@@ -58,24 +83,35 @@
                     <select id="year-select"></select>
                 </div>
                 
-                <div class="grid">
-                    <div>
-                        <fieldset>
-                            <legend>Zones :</legend>
-                            <label for="zone-a"><input type="checkbox" id="zone-a" class="zone-filter" checked> A</label>
-                            <label for="zone-b"><input type="checkbox" id="zone-b" class="zone-filter" checked> B</label>
-                            <label for="zone-c"><input type="checkbox" id="zone-c" class="zone-filter" checked> C</label>
-                        </fieldset>
-                    </div>
-                    <div>
-                        <fieldset>
-                            <legend>Afficher :</legend>
-                            <label for="filter-all"><input type="radio" id="filter-all" name="event-type" value="all" checked> Tous</label>
-                            <label for="filter-bridges"><input type="radio" id="filter-bridges" name="event-type" value="bridges"> Ponts</label>
-                            <label for="filter-vacations"><input type="radio" id="filter-vacations" name="event-type" value="vacations"> Vacances</label>
-                        </fieldset>
-                    </div>
-                </div> </div> <div id="calendar-wrapper">
+                <div class="filter-groups">
+                    <fieldset>
+                        <legend>Zones :</legend>
+                        <label for="zone-a">
+                            <input type="checkbox" id="zone-a" class="zone-filter" checked> A
+                        </label>
+                        <label for="zone-b">
+                            <input type="checkbox" id="zone-b" class="zone-filter" checked> B
+                        </label>
+                        <label for="zone-c">
+                            <input type="checkbox" id="zone-c" class="zone-filter" checked> C
+                        </label>
+                    </fieldset>
+                    <fieldset>
+                        <legend>Afficher :</legend>
+                        <label for="filter-all">
+                            <input type="radio" id="filter-all" name="event-type" value="all" checked> Tous
+                        </label>
+                        <label for="filter-bridges">
+                            <input type="radio" id="filter-bridges" name="event-type" value="bridges"> Ponts
+                        </label>
+                        <label for="filter-vacations">
+                            <input type="radio" id="filter-vacations" name="event-type" value="vacations"> Vacances
+                        </label>
+                    </fieldset>
+                </div>
+            </div>
+            
+            <div id="calendar-wrapper">
                 <div id='calendar'></div>
                 <div id="loading-indicator">Chargement des données...</div>
             </div>
@@ -102,7 +138,7 @@
                 headerToolbar: { 
                     left: 'prev,next today', 
                     center: 'title', 
-                    right: 'dayGridMonth,listMonth' // On garde listMonth pour le responsive
+                    right: 'dayGridMonth,listMonth' 
                 },
                 buttonText: {
                     today:    "Aujourd'hui",
@@ -132,7 +168,7 @@
                 const yearsToLoad = Array.from(yearSelect.options).map(opt => parseInt(opt.value));
                 
                 try {
-                    // --- BUG CORRIGÉ : Les 3 appels API sont de retour ---
+                    // --- BUG CORRIGÉ : Les 3 appels API sont bien présents ---
                     const promises = yearsToLoad.flatMap(year => [
                         fetch(`https://calendrier.api.gouv.fr/jours-feries/metropole/${year}.json`).then(res => res.json()),
                         fetch(`https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-calendrier-scolaire/records?where=annee_scolaire%3D%22${year-1}-${year}%22&limit=100`).then(res => res.json()),
@@ -187,6 +223,7 @@
                 const filterType = document.querySelector('input[name="event-type"]:checked').value;
                 
                 const filteredEvents = allEventsData.filter(event => {
+                    // Logique de filtrage
                     if (event.type === 'vacances' && !event.zone.split(', ').some(zone => zones[zone])) return false;
                     if (filterType === 'bridges' && !event.isBridge) return false;
                     if (filterType === 'vacations' && event.type !== 'vacances') return false;
