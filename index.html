@@ -39,7 +39,6 @@
         .fc .fc-button-primary:not(:disabled):hover { background-color: var(--pico-primary-hover); }
         .fc .fc-today-button:not(:disabled) { background-color: var(--pico-secondary-background); color: var(--pico-secondary-inverse); }
 
-        /* Logique Flexbox pour les contrôles */
         .controls {
             display: flex;
             flex-direction: column; 
@@ -48,17 +47,21 @@
         }
         .filter-groups {
             display: flex;
-            flex-direction: row; /* Force les deux groupes à être côte à côte */
+            flex-direction: row; 
             gap: 20px; 
             width: 100%;
         }
         .filter-groups fieldset {
-            flex: 1; /* Les deux groupes partagent l'espace équitablement */
+            flex: 1; 
             margin: 0; 
         }
 
-        /* La règle @media qui posait problème a été SUPPRIMÉE */
-        
+        /* Si l'écran est trop petit, on repasse les filtres en colonne */
+        @media (max-width: 600px) {
+            .filter-groups {
+                flex-direction: column;
+            }
+        }
     </style>
 </head>
 <body>
@@ -112,7 +115,6 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', async function() {
-            // Déclaration de toutes les variables
             const yearSelect = document.getElementById('year-select');
             const zoneFilters = document.querySelectorAll('.zone-filter');
             const eventTypeFilters = document.querySelectorAll('input[name="event-type"]');
@@ -120,17 +122,22 @@
             const loadingIndicator = document.getElementById('loading-indicator');
             const countdownBanner = document.getElementById('countdown-banner');
             const currentYear = new Date().getFullYear();
-            let allEventsData = []; // Notre cache de données local
+            let allEventsData = [];
 
-            // Initialisation de FullCalendar
+            // --- NOUVELLE LOGIQUE RESPONSIVE ---
+            // On vérifie la largeur de la fenêtre
+            const isMobile = window.innerWidth < 768;
+            // On choisit la vue par défaut en fonction de la taille
+            const defaultView = isMobile ? 'listMonth' : 'dayGridMonth';
+
             const calendar = new FullCalendar.Calendar(calendarEl, {
                 locale: 'fr',
-                initialView: 'dayGridMonth',
+                initialView: defaultView, // On utilise notre variable
                 initialDate: `${currentYear}-01-01`,
                 headerToolbar: { 
                     left: 'prev,next today', 
                     center: 'title', 
-                    right: 'dayGridMonth,listMonth' 
+                    right: 'dayGridMonth,listMonth' // On garde les deux options disponibles
                 },
                 buttonText: {
                     today:    "Aujourd'hui",
@@ -146,7 +153,6 @@
             });
             calendar.render();
 
-            // Remplir le sélecteur d'années
             for (let i = currentYear - 5; i <= currentYear + 5; i++) {
                 const option = document.createElement('option');
                 option.value = i; option.textContent = i;
@@ -154,7 +160,6 @@
                 yearSelect.appendChild(option);
             }
 
-            // Logique de Pré-chargement Total
             async function initialLoad() {
                 loadingIndicator.style.display = 'block';
                 const yearsToLoad = Array.from(yearSelect.options).map(opt => parseInt(opt.value));
@@ -177,18 +182,12 @@
                 }
             }
 
-            // Fonction qui traite les données brutes des APIs
             function processApiData(responses) {
                 let processedEvents = [];
                 const vacationTempStore = {}; 
                 responses.forEach(data => {
                     if (data && data.results) { 
                         for (const record of data.results) {
-                            // On filtre les événements pour ne garder que ceux de l'année civile en cours
-                            const eventYear = new Date(record.start_date).getFullYear();
-                            const targetYear = parseInt(yearSelect.value); // On utilise l'année du sélecteur au moment du chargement
-                            // Note: Cette logique doit être améliorée pour charger TOUTES les années
-                            
                             const key = record.description + record.start_date;
                             if (!vacationTempStore[key]) {
                                 vacationTempStore[key] = { date: record.start_date.substring(0, 10), endDate: record.end_date.substring(0, 10), description: record.description, type: 'vacances', zones: new Set([record.zones]) };
@@ -212,21 +211,12 @@
                 return processedEvents.sort((a, b) => a.date.localeCompare(b.date));
             }
             
-            // Fonction qui applique les filtres et met à jour le calendrier
             function updateDisplay() {
                 savePreferences();
                 const zones = { 'Zone A': document.getElementById('zone-a').checked, 'Zone B': document.getElementById('zone-b').checked, 'Zone C': document.getElementById('zone-c').checked };
                 const filterType = document.querySelector('input[name="event-type"]:checked').value;
                 
                 const filteredEvents = allEventsData.filter(event => {
-                    const eventYear = parseInt(event.date.substring(0, 4));
-                    if (eventYear !== parseInt(yearSelect.value)) {
-                         // Ce filtre est nécessaire si on ne recharge pas les données par année, mais ici on charge tout, donc on doit filtrer par année
-                         // MAIS la logique de pré-chargement total est déjà en place, donc allEventsData contient TOUT.
-                         // Nous devons filtrer les événements pour ne garder que ceux de l'année sélectionnée (pour la vue liste)
-                         // Non, FullCalendar gère ça tout seul. Ne filtrons pas par année ici.
-                    }
-
                     if (event.type === 'vacances' && !event.zone.split(', ').some(zone => zones[zone])) return false;
                     if (filterType === 'bridges' && !event.isBridge) return false;
                     if (filterType === 'vacations' && event.type !== 'vacances') return false;
@@ -254,13 +244,11 @@
                 updateCountdown(filteredEvents);
             }
             
-            // Fonction pour la bannière "Prochain Pont"
             function updateCountdown(filteredEvents) {
                 const today = new Date();
                 today.setHours(0,0,0,0); 
-                // On doit chercher dans allEventsData, pas seulement filteredEvents, pour le *prochain* pont, peu importe les filtres
                 const allFutureBridges = allEventsData.filter(event => event.isBridge && new Date(event.date + "T12:00:00Z") >= today);
-                const nextBridge = allFutureBridges[0]; // Le premier, puisqu'ils sont triés
+                const nextBridge = allFutureBridges[0];
                 
                 if (nextBridge) {
                     const nextBridgeDate = new Date(nextBridge.date + "T12:00:00Z");
@@ -273,7 +261,6 @@
                 }
             }
 
-            // Fonction pour générer les liens Google/iCal
             function generateCalendarLinks(event) {
                 const title = encodeURIComponent(event.title);
                 const startDate = new Date(event.startStr);
@@ -291,7 +278,6 @@
                         </div>`;
             }
 
-            // Fonctions de sauvegarde et chargement des préférences (localStorage)
             function savePreferences() {
                 const prefs = {
                     year: yearSelect.value,
@@ -318,18 +304,15 @@
                 }
             }
             
-            // --- Logique de Démarrage ---
             loadPreferences();
             calendar.gotoDate(`${yearSelect.value}-01-01`);
-            initialLoad(); // Lance le pré-chargement de 10 ans de données
+            initialLoad();
             
-            // Le sélecteur d'année ne fait que DÉPLACER la vue (navigation instantanée)
             yearSelect.addEventListener('change', () => {
                 calendar.gotoDate(`${yearSelect.value}-01-01`);
                 savePreferences();
             });
             
-            // Les filtres ne font que METTRE À JOUR l'affichage (filtrage instantané)
             [...zoneFilters, ...eventTypeFilters].forEach(el => el.addEventListener('change', updateDisplay));
         });
     </script>
