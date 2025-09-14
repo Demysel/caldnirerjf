@@ -19,17 +19,14 @@
             font-weight: bold; display: none; border: 1px solid var(--pico-card-border-color); 
         }
         
+        /* Styles des événements (simplifiés) */
         .fc-event { border: none !important; color: #fff !important; cursor: pointer;}
         .fc-event.event-ferie { background-color: #1565c0; }
         .fc-event.event-vacances { background-color: #2e7d32; }
         .fc-event.event-pont { background-color: #ff8f00; color: #000 !important; font-weight: bold; }
         .fc-event.event-pont .fc-event-title::before { content: '💡 '; }
 
-        .fc-popover { background: var(--pico-card-background-color); border: 1px solid var(--pico-card-border-color); }
-        .calendar-links { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--pico-primary-border); display: flex; gap: 10px; font-size: 0.9em; }
-        .calendar-links a { text-decoration: none; padding: 5px 10px; background-color: var(--pico-primary); color: var(--pico-primary-inverse); border-radius: 4px; }
-        .calendar-links a:hover { background-color: var(--pico-primary-hover); }
-
+        /* Correction des boutons FullCalendar surchargés par Pico */
         .fc .fc-button { 
             background-color: var(--pico-primary); color: var(--pico-primary-inverse); 
             border: none; padding: 0.5rem 1rem; margin: 0.2rem; 
@@ -39,7 +36,7 @@
         .fc .fc-button-primary:not(:disabled):hover { background-color: var(--pico-primary-hover); }
         .fc .fc-today-button:not(:disabled) { background-color: var(--pico-secondary-background); color: var(--pico-secondary-inverse); }
 
-        /* Logique Flexbox pour les contrôles */
+        /* Mise en page Flexbox pour les contrôles */
         .controls {
             display: flex;
             flex-direction: column; 
@@ -48,17 +45,15 @@
         }
         .filter-groups {
             display: flex;
-            flex-direction: row; /* Force les deux groupes à être côte à côte */
+            flex-direction: row; 
             gap: 20px; 
             width: 100%;
         }
         .filter-groups fieldset {
-            flex: 1; /* Les deux groupes partagent l'espace équitablement */
+            flex: 1; 
             margin: 0; 
         }
-
-        /* La règle @media qui posait problème a été SUPPRIMÉE */
-        
+        /* Suppression de la règle @media qui cassait la disposition */
     </style>
 </head>
 <body>
@@ -123,8 +118,9 @@
 
             const calendar = new FullCalendar.Calendar(calendarEl, {
                 locale: 'fr',
-                initialView: 'dayGridMonth', // On garde la vue "Mois" par défaut
+                initialView: 'dayGridMonth',
                 initialDate: `${currentYear}-01-01`,
+                dayHeaderFormat: { weekday: 'narrow' }, // Vue compacte pour mobile
                 headerToolbar: { 
                     left: 'prev,next today', 
                     center: 'title', 
@@ -136,15 +132,7 @@
                     list:     'Liste'
                 },
                 allDayText: "Journée entière",
-
-                // --- NOUVEAU : Format compact pour les en-têtes de jours ---
-                dayHeaderFormat: { weekday: 'narrow' }, // Affiche D, L, M, M, J, V, S
-
-                eventContent: function(arg) { 
-                    let eventHtml = `<b>${arg.event.title}</b>`;
-                    const links = generateCalendarLinks(arg.event);
-                    return { html: `<div class="fc-event-main-frame">${eventHtml}</div><div class="fc-popover-footer">${links}</div>` };
-                }
+                eventDidMount: function(info) { info.el.title = info.event.title; } // Simple infobulle
             });
             calendar.render();
 
@@ -160,6 +148,7 @@
                 const yearsToLoad = Array.from(yearSelect.options).map(opt => parseInt(opt.value));
                 
                 try {
+                    // --- BUG API CORRIGÉ : On relance bien les 3 appels ---
                     const promises = yearsToLoad.flatMap(year => [
                         fetch(`https://calendrier.api.gouv.fr/jours-feries/metropole/${year}.json`).then(res => res.json()),
                         fetch(`https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-calendrier-scolaire/records?where=annee_scolaire%3D%22${year-1}-${year}%22&limit=100`).then(res => res.json()),
@@ -180,9 +169,14 @@
             function processApiData(responses) {
                 let processedEvents = [];
                 const vacationTempStore = {}; 
+                const validZones = ['Zone A', 'Zone B', 'Zone C']; // On ne garde que ces zones
+
                 responses.forEach(data => {
                     if (data && data.results) { 
                         for (const record of data.results) {
+                            // --- NOUVEAU FILTRE : On ignore les zones d'outre-mer ---
+                            if (!validZones.includes(record.zones)) continue; 
+
                             const key = record.description + record.start_date;
                             if (!vacationTempStore[key]) {
                                 vacationTempStore[key] = { date: record.start_date.substring(0, 10), endDate: record.end_date.substring(0, 10), description: record.description, type: 'vacances', zones: new Set([record.zones]) };
@@ -200,7 +194,6 @@
                 for (const key in vacationTempStore) {
                     const event = vacationTempStore[key];
                     event.zone = Array.from(event.zones).sort().join(', ');
-                    delete event.zones;
                     processedEvents.push(event);
                 }
                 return processedEvents.sort((a, b) => a.date.localeCompare(b.date));
@@ -256,22 +249,7 @@
                 }
             }
 
-            function generateCalendarLinks(event) {
-                const title = encodeURIComponent(event.title);
-                const startDate = new Date(event.startStr);
-                let endDate = event.end ? new Date(event.endStr) : new Date(startDate);
-                if (!event.end) endDate.setDate(endDate.getDate() + 1);
-                const formatDate = (date) => date.toISOString().replace(/-/g, '').split('T')[0];
-                const googleDates = `${formatDate(startDate)}/${formatDate(endDate)}`;
-                const googleLink = `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${googleDates}`;
-                const icsContent = ["BEGIN:VCALENDAR", "VERSION:2.0", "BEGIN:VEVENT", `URL:${document.location.href}`, `DTSTART;VALUE=DATE:${formatDate(startDate)}`, `DTEND;VALUE=DATE:${formatDate(endDate)}`, `SUMMARY:${event.title}`, "END:VEVENT", "END:VCALENDAR"].join("\n");
-                const icsLink = `data:text/calendar;charset=utf8,${encodeURIComponent(icsContent)}`;
-                
-                return `<div class="calendar-links">
-                            <a href="${googleLink}" target="_blank" rel="noopener" role="button">Google</a>
-                            <a href="${icsLink}" download="${event.title}.ics" role="button">iCal/Outlook</a>
-                        </div>`;
-            }
+            // SUPPRESSION de la fonction generateCalendarLinks
 
             function savePreferences() {
                 const prefs = {
