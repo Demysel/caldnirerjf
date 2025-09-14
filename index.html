@@ -39,6 +39,7 @@
         .fc .fc-button-primary:not(:disabled):hover { background-color: var(--pico-primary-hover); }
         .fc .fc-today-button:not(:disabled) { background-color: var(--pico-secondary-background); color: var(--pico-secondary-inverse); }
 
+        /* Logique Flexbox pour les contrôles */
         .controls {
             display: flex;
             flex-direction: column; 
@@ -47,21 +48,17 @@
         }
         .filter-groups {
             display: flex;
-            flex-direction: row; 
+            flex-direction: row; /* Force les deux groupes à être côte à côte */
             gap: 20px; 
             width: 100%;
         }
         .filter-groups fieldset {
-            flex: 1; 
+            flex: 1; /* Les deux groupes partagent l'espace équitablement */
             margin: 0; 
         }
 
-        /* Si l'écran est trop petit, on repasse les filtres en colonne */
-        @media (max-width: 600px) {
-            .filter-groups {
-                flex-direction: column;
-            }
-        }
+        /* La règle @media qui posait problème a été SUPPRIMÉE */
+        
     </style>
 </head>
 <body>
@@ -122,22 +119,16 @@
             const loadingIndicator = document.getElementById('loading-indicator');
             const countdownBanner = document.getElementById('countdown-banner');
             const currentYear = new Date().getFullYear();
-            let allEventsData = [];
-
-            // --- NOUVELLE LOGIQUE RESPONSIVE ---
-            // On vérifie la largeur de la fenêtre
-            const isMobile = window.innerWidth < 768;
-            // On choisit la vue par défaut en fonction de la taille
-            const defaultView = isMobile ? 'listMonth' : 'dayGridMonth';
+            let allEventsData = []; 
 
             const calendar = new FullCalendar.Calendar(calendarEl, {
                 locale: 'fr',
-                initialView: defaultView, // On utilise notre variable
+                initialView: 'dayGridMonth', // On garde la vue "Mois" par défaut
                 initialDate: `${currentYear}-01-01`,
                 headerToolbar: { 
                     left: 'prev,next today', 
                     center: 'title', 
-                    right: 'dayGridMonth,listMonth' // On garde les deux options disponibles
+                    right: 'dayGridMonth,listMonth' 
                 },
                 buttonText: {
                     today:    "Aujourd'hui",
@@ -145,6 +136,10 @@
                     list:     'Liste'
                 },
                 allDayText: "Journée entière",
+
+                // --- NOUVEAU : Format compact pour les en-têtes de jours ---
+                dayHeaderFormat: { weekday: 'narrow' }, // Affiche D, L, M, M, J, V, S
+
                 eventContent: function(arg) { 
                     let eventHtml = `<b>${arg.event.title}</b>`;
                     const links = generateCalendarLinks(arg.event);
