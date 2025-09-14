@@ -4,23 +4,41 @@
     <meta charset='UTF-8' />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calendrier Fériés & Vacances</title>
+    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+    
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.14/index.global.min.js'></script>
+    
     <style>
         body { padding: 0; }
         main { margin-top: 20px; }
         #calendar-wrapper { position: relative; }
-        #loading-indicator { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; background: var(--pico-card-background-color); padding: 20px; border-radius: var(--pico-border-radius); font-weight: bold; display: none; border: 1px solid var(--pico-card-border-color); }
-        .fc-event { border: none !important; color: #fff !important; }
+        #loading-indicator { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            z-index: 10; background: var(--pico-card-background-color); 
+            padding: 20px; border-radius: var(--pico-border-radius); 
+            font-weight: bold; display: none; border: 1px solid var(--pico-card-border-color); 
+        }
+        
+        /* Styles des événements */
+        .fc-event { border: none !important; color: #fff !important; cursor: pointer;}
         .fc-event.event-ferie { background-color: #1565c0; }
         .fc-event.event-vacances { background-color: #2e7d32; }
         .fc-event.event-pont { background-color: #ff8f00; color: #000 !important; font-weight: bold; }
         .fc-event.event-pont .fc-event-title::before { content: '💡 '; }
+
+        /* Styles des pop-ups et liens d'agenda */
         .fc-popover { background: var(--pico-card-background-color); border: 1px solid var(--pico-card-border-color); }
         .calendar-links { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--pico-primary-border); display: flex; gap: 10px; font-size: 0.9em; }
         .calendar-links a { text-decoration: none; padding: 5px 10px; background-color: var(--pico-primary); color: var(--pico-primary-inverse); border-radius: 4px; }
         .calendar-links a:hover { background-color: var(--pico-primary-hover); }
-        .fc .fc-button { background-color: var(--pico-primary); color: var(--pico-primary-inverse); border: none; padding: 0.5rem 1rem; margin: 0.2rem; border-radius: var(--pico-border-radius); }
+
+        /* Correction des boutons FullCalendar surchargés par Pico */
+        .fc .fc-button { 
+            background-color: var(--pico-primary); color: var(--pico-primary-inverse); 
+            border: none; padding: 0.5rem 1rem; margin: 0.2rem; 
+            border-radius: var(--pico-border-radius); 
+        }
         .fc .fc-button-primary:disabled { background-color: var(--pico-muted-background); }
         .fc .fc-button-primary:not(:disabled):hover { background-color: var(--pico-primary-hover); }
         .fc .fc-today-button:not(:disabled) { background-color: var(--pico-secondary-background); color: var(--pico-secondary-inverse); }
@@ -39,35 +57,25 @@
                     <label for="year-select">Aller à l'année :</label>
                     <select id="year-select"></select>
                 </div>
+                
                 <div class="grid">
-                    <fieldset>
-                        <legend>Zones :</legend>
-                        <label for="zone-a">
-                            <input type="checkbox" id="zone-a" class="zone-filter" checked> A
-                        </label>
-                        <label for="zone-b">
-                            <input type="checkbox" id="zone-b" class="zone-filter" checked> B
-                        </label>
-                        <label for="zone-c">
-                            <input type="checkbox" id="zone-c" class="zone-filter" checked> C
-                        </label>
-                    </fieldset>
-                    <fieldset>
-                        <legend>Afficher :</legend>
-                        <label for="filter-all">
-                            <input type="radio" id="filter-all" name="event-type" value="all" checked> Tous
-                        </label>
-                        <label for="filter-bridges">
-                            <input type="radio" id="filter-bridges" name="event-type" value="bridges"> Ponts
-                        </label>
-                        <label for="filter-vacations">
-                            <input type="radio" id="filter-vacations" name="event-type" value="vacations"> Vacances
-                        </label>
-                    </fieldset>
-                </div>
-            </div>
-            
-            <div id="calendar-wrapper">
+                    <div>
+                        <fieldset>
+                            <legend>Zones :</legend>
+                            <label for="zone-a"><input type="checkbox" id="zone-a" class="zone-filter" checked> A</label>
+                            <label for="zone-b"><input type="checkbox" id="zone-b" class="zone-filter" checked> B</label>
+                            <label for="zone-c"><input type="checkbox" id="zone-c" class="zone-filter" checked> C</label>
+                        </fieldset>
+                    </div>
+                    <div>
+                        <fieldset>
+                            <legend>Afficher :</legend>
+                            <label for="filter-all"><input type="radio" id="filter-all" name="event-type" value="all" checked> Tous</label>
+                            <label for="filter-bridges"><input type="radio" id="filter-bridges" name="event-type" value="bridges"> Ponts</label>
+                            <label for="filter-vacations"><input type="radio" id="filter-vacations" name="event-type" value="vacations"> Vacances</label>
+                        </fieldset>
+                    </div>
+                </div> </div> <div id="calendar-wrapper">
                 <div id='calendar'></div>
                 <div id="loading-indicator">Chargement des données...</div>
             </div>
@@ -76,7 +84,7 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', async function() {
-            // ... (toutes les déclarations de variables restent les mêmes) ...
+            // Déclaration de toutes les variables
             const yearSelect = document.getElementById('year-select');
             const zoneFilters = document.querySelectorAll('.zone-filter');
             const eventTypeFilters = document.querySelectorAll('input[name="event-type"]');
@@ -84,15 +92,25 @@
             const loadingIndicator = document.getElementById('loading-indicator');
             const countdownBanner = document.getElementById('countdown-banner');
             const currentYear = new Date().getFullYear();
-            let allEventsData = [];
+            let allEventsData = []; // Notre cache de données local
 
+            // Initialisation de FullCalendar avec toutes les traductions
             const calendar = new FullCalendar.Calendar(calendarEl, {
                 locale: 'fr',
                 initialView: 'dayGridMonth',
-                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,listMonth' },
-                buttonText: { today: "Aujourd'hui", month: 'Mois', list: 'Liste' },
+                initialDate: `${currentYear}-01-01`,
+                headerToolbar: { 
+                    left: 'prev,next today', 
+                    center: 'title', 
+                    right: 'dayGridMonth,listMonth' // On garde listMonth pour le responsive
+                },
+                buttonText: {
+                    today:    "Aujourd'hui",
+                    month:    'Mois',
+                    list:     'Liste'
+                },
                 allDayText: "Journée entière",
-                eventContent: function(arg) {
+                eventContent: function(arg) { // Pour ajouter les liens Google/iCal
                     let eventHtml = `<b>${arg.event.title}</b>`;
                     const links = generateCalendarLinks(arg.event);
                     return { html: `<div class="fc-event-main-frame">${eventHtml}</div><div class="fc-popover-footer">${links}</div>` };
@@ -100,6 +118,7 @@
             });
             calendar.render();
 
+            // Remplir le sélecteur d'années
             for (let i = currentYear - 5; i <= currentYear + 5; i++) {
                 const option = document.createElement('option');
                 option.value = i; option.textContent = i;
@@ -107,18 +126,18 @@
                 yearSelect.appendChild(option);
             }
 
+            // --- Logique de Pré-chargement Total (API CORRIGÉE) ---
             async function initialLoad() {
                 loadingIndicator.style.display = 'block';
                 const yearsToLoad = Array.from(yearSelect.options).map(opt => parseInt(opt.value));
                 
                 try {
-                    // --- CORRECTION DU BUG : J'AI RAJOUTÉ LE TROISIÈME FETCH ---
+                    // --- BUG CORRIGÉ : Les 3 appels API sont de retour ---
                     const promises = yearsToLoad.flatMap(year => [
                         fetch(`https://calendrier.api.gouv.fr/jours-feries/metropole/${year}.json`).then(res => res.json()),
                         fetch(`https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-calendrier-scolaire/records?where=annee_scolaire%3D%22${year-1}-${year}%22&limit=100`).then(res => res.json()),
-                        fetch(`https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-calendrier-scolaire/records?where=annee_scolaire%3D%22${year}-${year+1}%22&limit=100`).then(res => res.json()) // CETTE LIGNE AVAIT DISPARU
+                        fetch(`https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-calendrier-scolaire/records?where=annee_scolaire%3D%22${year}-${year+1}%22&limit=100`).then(res => res.json())
                     ]);
-                    // --- FIN DE LA CORRECTION ---
                     
                     const responses = await Promise.all(promises);
                     allEventsData = processApiData(responses);
@@ -131,12 +150,12 @@
                 }
             }
 
-            // ... (Toutes les autres fonctions JavaScript restent identiques) ...
+            // Fonction qui traite les données brutes des APIs
             function processApiData(responses) {
                 let processedEvents = [];
                 const vacationTempStore = {}; 
                 responses.forEach(data => {
-                    if (data && data.results) { 
+                    if (data && data.results) { // API Vacances
                         for (const record of data.results) {
                             const key = record.description + record.start_date;
                             if (!vacationTempStore[key]) {
@@ -145,7 +164,7 @@
                                 vacationTempStore[key].zones.add(record.zones);
                             }
                         }
-                    } else if (data) { 
+                    } else if (data) { // API Jours Fériés
                         for (const dateStr in data) {
                              const date = new Date(dateStr + "T12:00:00Z");
                              processedEvents.push({ date: dateStr, description: data[dateStr], type: 'ferie', isBridge: (date.getUTCDay() === 2 || date.getUTCDay() === 4) });
@@ -161,6 +180,7 @@
                 return processedEvents.sort((a, b) => a.date.localeCompare(b.date));
             }
             
+            // Fonction qui applique les filtres et met à jour le calendrier (ne recharge pas les données)
             function updateDisplay() {
                 savePreferences();
                 const zones = { 'Zone A': document.getElementById('zone-a').checked, 'Zone B': document.getElementById('zone-b').checked, 'Zone C': document.getElementById('zone-c').checked };
@@ -194,11 +214,11 @@
                 updateCountdown(filteredEvents);
             }
             
+            // Fonction pour la bannière "Prochain Pont"
             function updateCountdown(filteredEvents) {
                 const today = new Date();
                 today.setHours(0,0,0,0); 
                 const nextBridge = filteredEvents.find(event => event.isBridge && new Date(event.date + "T12:00:00Z") >= today);
-
                 if (nextBridge) {
                     const nextBridgeDate = new Date(nextBridge.date + "T12:00:00Z");
                     const diffTime = nextBridgeDate - today;
@@ -210,6 +230,7 @@
                 }
             }
 
+            // Fonction pour générer les liens Google/iCal
             function generateCalendarLinks(event) {
                 const title = encodeURIComponent(event.title);
                 const startDate = new Date(event.startStr);
@@ -227,6 +248,7 @@
                         </div>`;
             }
 
+            // Fonctions de sauvegarde et chargement des préférences (localStorage)
             function savePreferences() {
                 const prefs = {
                     year: yearSelect.value,
@@ -256,12 +278,15 @@
             // --- Logique de Démarrage ---
             loadPreferences();
             calendar.gotoDate(`${yearSelect.value}-01-01`);
-            initialLoad();
+            initialLoad(); // Lance le pré-chargement de 10 ans de données
             
+            // Le sélecteur d'année ne fait que DÉPLACER la vue (navigation instantanée)
             yearSelect.addEventListener('change', () => {
                 calendar.gotoDate(`${yearSelect.value}-01-01`);
                 savePreferences();
             });
+            
+            // Les filtres ne font que METTRE À JOUR l'affichage (filtrage instantané)
             [...zoneFilters, ...eventTypeFilters].forEach(el => el.addEventListener('change', updateDisplay));
         });
     </script>
